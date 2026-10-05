@@ -44,6 +44,7 @@ before running. A backtest is an experiment, not a performance promise.
 ## 可配置研究流程（2026-10-05）
 
 - [WW量化流程与参数手册.md](WW量化流程与参数手册.md)：完整研究流程、参数字典、数据边界与运行示例。
+- [WW数据接口盘点与可用状态.md](WW数据接口盘点与可用状态.md)：同机 QuickSync/Finsight 接口目录、权限记录和当前连通性状态。
 - `python3 -m wwquant.cli --help`：审计、组合回测、参数搜索与时间留出验证。
 - [configs/ww_price_proxy.json](configs/ww_price_proxy.json)：全参数价格代理配置。
 - [configs/ww_formal.json](configs/ww_formal.json)：需接入历史证据的 WW 配置。
