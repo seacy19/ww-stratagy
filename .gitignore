@@ -1,0 +1,24 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.DS_Store
+
+# Local market data, credentials, and generated research artifacts
+.env
+.env.*
+*.pem
+*.key
+*token*
+*secret*
+/data/
+/proxy_cache/
+/proxy_cache
+/runs/
+/direct_adam_oos/
+/direct_adam_oos_2atr/
+/research_*/
+/WW_PIT_price_proxy_*.pkl
+/WW_PIT_price_proxy_*.csv
+/*.log
+/*.err.log

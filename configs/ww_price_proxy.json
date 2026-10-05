@@ -1,0 +1,68 @@
+{
+  "data": {
+    "prices": "proxy_cache/daily_v3_20240814_20250515.pkl",
+    "metadata": "proxy_cache/stock_metadata_v2.pkl",
+    "actions": "proxy_cache/actions_v4_pit_repaired_20181112_20250515.pkl",
+    "evidence": "",
+    "exclude_codes": [],
+    "start": "20250102",
+    "end": "20250331"
+  },
+  "selection": {
+    "mode": "price_proxy",
+    "return_lookback": 60,
+    "liquidity_lookback": 20,
+    "top_return_fraction": 0.2,
+    "top_liquidity_fraction": 0.5,
+    "min_mainline_score": 7.0,
+    "min_company_score": 0.6,
+    "evidence_max_age_days": 45,
+    "require_both_legs": true
+  },
+  "gate": {
+    "breakout_lookback": 60,
+    "volume_lookback": 20,
+    "min_volume_ratio": 1.5,
+    "fast_ema": 20,
+    "slow_ema": 60,
+    "trend_breakout_lookback": 20,
+    "atr_lookback": 20,
+    "min_range_atr": 1.8,
+    "min_gap_atr": 0.5,
+    "min_close_location": 0.7
+  },
+  "signal": {
+    "mode": "second_reflection",
+    "atr_period": 14,
+    "reversal_atr": 2.0,
+    "alpha": 0.0,
+    "beta": 0.25,
+    "safety_atr": 0.0,
+    "meaningful_pullback_atr": 1.0,
+    "require_meaningful_pullback": true,
+    "log_projection": false,
+    "stop_buffer": 0.01,
+    "max_stop_distance": 0.2,
+    "max_wait_sessions": 5,
+    "reclaim_min_atr": 1.0,
+    "reclaim_max_atr": 2.0,
+    "reclaim_min_close_location": 0.7,
+    "reclaim_min_volume_ratio": 1.5,
+    "reclaim_alpha": 0.25
+  },
+  "portfolio": {
+    "initial_cash": 1000000.0,
+    "risk_per_trade": 0.005,
+    "max_position_weight": 0.25,
+    "max_gross_exposure": 0.8,
+    "max_positions": 5,
+    "lot_size": 100,
+    "max_holding_sessions": 60,
+    "trailing_stop": true,
+    "drawdown_halt": 0.15,
+    "commission_bps": 3.0,
+    "min_commission": 5.0,
+    "sell_tax_bps": 5.0,
+    "slippage_bps": 5.0
+  }
+}

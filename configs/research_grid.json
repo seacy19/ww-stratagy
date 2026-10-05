@@ -1,0 +1,11 @@
+{
+  "signal.meaningful_pullback_atr": [
+    1.0,
+    1.5,
+    2.0
+  ],
+  "portfolio.risk_per_trade": [
+    0.003,
+    0.005
+  ]
+}
