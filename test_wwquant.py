@@ -43,7 +43,8 @@ class EvidenceTests(unittest.TestCase):
         config = Config().selection
         row = dict(available_date="20250102", expires_date="20250131", ts_code="A",
                    mainline="theme", mainline_score=8, company_score=.8,
-                   invalidated="0", positive_cycle="1", real_member="1", bottom_up="1")
+                   invalidated="0", positive_cycle="1", real_member="1",
+                   top_down="1", bottom_up="1")
         self.assertEqual(select_evidence([row], "20250101", config), {})
         self.assertIn("A", select_evidence([row], "20250102", config))
         self.assertEqual(select_evidence([row], "20250201", config), {})

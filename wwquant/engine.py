@@ -13,7 +13,7 @@ from statistics import mean, stdev
 from adam_execution import initial_stop
 from pit_accounting import adjusted_stop_asof
 from proxy_pool import build_pit_proxy_candidates
-from wwquant.data import select_evidence
+from wwquant.data import classify_evidence, select_evidence
 from wwquant.signals import make_plan, technical_bars
 
 
@@ -229,6 +229,10 @@ def run(config, records, metadata, actions, evidence=()):
             raise AssertionError("negative cash")
 
         if config.selection.mode == "ww":
+            leg_states = classify_evidence(evidence, date, config.selection)
+            for code, item in sorted(leg_states.items()):
+                decisions.append({"date": date, "code": code, "stage": "dual_leg",
+                                  "reason": item["status"]})
             selected = select_evidence(evidence, date, config.selection)
             todays = {code: {"score": row["company_score"], "mainline": row["mainline"]}
                       for code, row in selected.items()}

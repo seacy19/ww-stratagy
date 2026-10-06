@@ -72,8 +72,8 @@ def audit(records, metadata, actions, config):
 
 
 EVIDENCE_FIELDS = ("available_date", "expires_date", "ts_code", "mainline",
-                   "mainline_score", "company_score", "positive_cycle",
-                   "real_member", "bottom_up", "invalidated", "source_url",
+                   "mainline_score", "company_score", "top_down", "bottom_up",
+                   "positive_cycle", "real_member", "invalidated", "source_url",
                    "source_sha256")
 
 
@@ -95,7 +95,7 @@ def read_evidence(path):
         if key in seen:
             raise ValueError(f"ambiguous evidence version: {key}")
         seen.add(key)
-        for field in ("positive_cycle", "real_member", "bottom_up", "invalidated"):
+        for field in ("top_down", "bottom_up", "positive_cycle", "real_member", "invalidated"):
             if row[field] not in {"0", "1"}:
                 raise ValueError(f"{field} must be 0 or 1")
         for field, maximum in (("mainline_score", 11), ("company_score", 1)):
@@ -107,24 +107,57 @@ def read_evidence(path):
     return rows
 
 
-def select_evidence(rows, date, config):
+def classify_evidence(rows, date, config):
+    """Return frozen PIT candidate states before price execution filters.
+
+    A top-down hit needs a live positive-cycle thesis and verified real member.
+    A bottom-up hit needs an independently documented company inflection.
+    Both states must be true for the intersection candidate under the default
+    research rule. Single-leg cases remain visible for investigation.
+    """
     latest = {}
     for row in rows:
         if row["available_date"] <= date:
             key = row["ts_code"], row["mainline"]
             if key not in latest or latest[key]["available_date"] < row["available_date"]:
                 latest[key] = row
-    selected = {}
+    statuses = {}
     for row in latest.values():
         age = (datetime.strptime(date, "%Y%m%d") - datetime.strptime(row["available_date"], "%Y%m%d")).days
-        if (row["expires_date"] < date or age > config.evidence_max_age_days
-                or row["invalidated"] == "1" or row["positive_cycle"] != "1"
-                or row["real_member"] != "1"
-                or (config.require_both_legs and row["bottom_up"] != "1")
-                or row["mainline_score"] < config.min_mainline_score
-                or row["company_score"] < config.min_company_score):
-            continue
         code = row["ts_code"]
-        if code not in selected or row["company_score"] > selected[code]["company_score"]:
+        if row["expires_date"] < date or age > config.evidence_max_age_days:
+            status = "stale_evidence"
+        elif row["invalidated"] == "1":
+            status = "invalidated"
+        else:
+            top_down = (row["top_down"] == "1" and row["positive_cycle"] == "1"
+                        and row["real_member"] == "1"
+                        and row["mainline_score"] >= config.min_mainline_score)
+            bottom_up = (row["bottom_up"] == "1"
+                         and row["company_score"] >= config.min_company_score)
+            if top_down and bottom_up:
+                status = "both_legs_intersection"
+            elif top_down:
+                status = "top_down_only_investigate"
+            elif bottom_up:
+                status = "bottom_up_only_investigate"
+            else:
+                status = "neither_leg_qualified"
+        previous = statuses.get(code)
+        if previous is None or row["company_score"] > previous["evidence"]["company_score"]:
+            statuses[code] = {"status": status, "evidence": row}
+    return statuses
+
+
+def select_evidence(rows, date, config):
+    """Select tradable WW members; diagnostics for single legs remain separate."""
+    statuses = classify_evidence(rows, date, config)
+    selected = {}
+    for code, item in statuses.items():
+        row = item["evidence"]
+        if item["status"] == "both_legs_intersection":
+            selected[code] = row
+        elif (not config.require_both_legs and item["status"] in
+              {"top_down_only_investigate", "bottom_up_only_investigate"}):
             selected[code] = row
     return selected
