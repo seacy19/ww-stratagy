@@ -1,6 +1,6 @@
 # WW 数据接口盘点与可用状态
 
-盘点日期：2026-10-05。此文件记录同机项目代码、历史审计和不含凭据的连通性检查；不保存任何密钥。
+盘点日期：2026-10-07。此文件记录同机项目代码、历史审计和不含凭据的连通性检查；不保存任何密钥。
 
 ## 当前结论
 
@@ -16,10 +16,10 @@
 | QuantAgentChat 本机实际缓存 | `QuantAgentChat/data/screener-cache`，2026-10-07 只读盘点 | 有 5,561 只股票的 2026-09-30 单日横截面，800 只曾进筛选池股票约 900 日的前复权价/估值/资金流，以及 800 只的 5 项最新财务指标；不是全市场历史面板或 PIT 财报。详见 [缓存覆盖审计](WW策略_QuantAgentChat缓存覆盖审计.md) |
 | Finsight 新闻检索 | QuantAgentChat 的 `server/data/finsight.ts`，支持关键词/语义检索，代码列出 Eastmoney、10jqka、一财、华尔街见闻等来源 | 配置了服务地址；本次无凭据轻量请求遭远端断开，目前不可访问 |
 | 巨潮公告 | WW 的 `build_mainline_pit_data.py`、`build_2019_evidence_pack.py` 和历史审计记录 | 历史接口与 PDF 下载曾成功；公告元数据、来源标识和 PDF 哈希已落库。不是当前 Codex 的独立 MCP 连接 |
-| Tushare 直连接口 | WW 的 `tushare_data.py` 和数据建设/审计脚本 | 适配器与本地历史缓存存在；直连脚本依赖 `TUSHARE_TOKEN` 或原 Windows Tushare MCP Server 路径。当前 shell 没有 Tushare token，原脚本仍有 Windows 绝对路径 |
+| Tushare 直连接口 | macOS 登录钥匙串、本地官方 HTTPS `trade_cal` 实测 | 钥匙串读取已验证；官方 HTTPS 查询返回成功，2026-10-07 休市、10-08 开市。当前 SDK 版本需使用根路径 HTTPS 传输适配，避免默认 HTTP/路径拼接；其他 API 的权限尚未逐项复核 |
 | WW 本地历史缓存 | `proxy_cache/`、`data/mainline_pit/` | 本地已有约 1 GB 行情缓存与 170 MB PIT 证据数据，可支持离线工作；内容覆盖和 PIT 缺口以既有审计报告为准 |
 
-本次连通性测试只发了不含 token 的小型探测请求，没有读取、显示或上传 `.env` 中的任何凭据，也没有下载市场数据。
+QuickSync 曾返回代理 token 过期状态；其 HTTP 地址不再用于携带凭据。2026-10-07 已通过官方 Tushare HTTPS 根路径读取交易日历，未显示或写出 Token；市场数据查询权限仍需逐接口测试。
 
 2026-10-07 又对 QuantAgentChat 的 gzip 缓存做了只读统计，没有修改或复制其本地数据；逐文件数、日期覆盖和字段边界见缓存覆盖审计报告。
 
@@ -54,12 +54,12 @@
 
 ## 安全与接入建议
 
-1. 先让 QuickSync 提供有效 HTTPS 地址与可信证书，再用已有代理凭据验证权限。不要把 token 放进 HTTP 请求。
+1. QuickSync 只在提供有效 HTTPS 地址与可信证书后再接入；当前使用已验证的官方 Tushare HTTPS 适配器，不向明文 HTTP 发送 token。
 2. 修复 Finsight 当前地址的可达性后，再确认新闻源覆盖、时间戳精度和历史检索范围。
 3. 将 QuickSync 用作 WW 的统一在线数据适配器，保留现有离线缓存作为可复现回测输入；在安全连通前不把在线取数标成已接通。
    QuantAgentChat 当前缓存可先用于候选股价/资金指标复核；正式 WW 训练仍需补全全市场时点股票池及 PIT 财务、公告、主题成员证据。
 4. 对 `dc_member`、`ths_member`、新闻、分钟线、送转上市日和历史涨跌停逐接口留存成功/拒绝审计，不根据名称推断权限。
-5. 修复直连脚本依赖 Windows MCP Server 的绝对路径，并只从环境变量读取 `TUSHARE_TOKEN`。
+5. Tushare 凭据可从 macOS 登录钥匙串读取；运行脚本仍可用进程级 `TUSHARE_TOKEN` 覆盖，但不要硬编码或提交凭据。
 
 ## 关联文件
 

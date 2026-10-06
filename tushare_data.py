@@ -7,13 +7,13 @@ structures while preserving the source timestamps.
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from typing import Any
 
 from adam_execution import MinuteBar
 from adam_gate import Bar
 from pit_accounting import CorporateAction
+from tushare_credentials import create_tushare_client
 
 
 @dataclass(frozen=True)
@@ -29,13 +29,9 @@ class TushareDataClient:
     def __init__(self, token: str | None = None, *, pro: Any | None = None):
         if pro is None:
             try:
-                import tushare as ts
+                pro = create_tushare_client(token)
             except ImportError as exc:  # pragma: no cover - environment setup
                 raise RuntimeError("tushare is required for live data access") from exc
-            token = token or os.environ.get("TUSHARE_TOKEN")
-            if not token:
-                raise ValueError("TUSHARE_TOKEN is not configured")
-            pro = ts.pro_api(token)
         self.pro = pro
 
     def daily_records(
