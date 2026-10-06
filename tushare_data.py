@@ -118,9 +118,10 @@ class TushareDataClient:
         self, ts_code: str, start_date: str, end_date: str
     ) -> list[CorporateAction]:
         """Load implemented, dated corporate actions for point-in-time use."""
-        frame = self.pro.dividend(
-            ts_code=ts_code, start_date=start_date, end_date=end_date
-        )
+        # Tushare's dividend API filters on ann_date/record_date/ex_date,
+        # not start_date/end_date. Fetch this security's action history, then
+        # apply the requested ex-date window locally.
+        frame = self.pro.dividend(ts_code=ts_code)
         if frame is None or len(frame) == 0:
             return []
 
@@ -133,7 +134,7 @@ class TushareDataClient:
             if str(getattr(row, "div_proc", "")) != "实施":
                 continue
             ex_date = clean(getattr(row, "ex_date", None))
-            if ex_date is None:
+            if ex_date is None or not start_date <= ex_date <= end_date:
                 continue
             # Tushare splits stock additions into bonus shares (送股) and
             # capitalisation/transfer shares (转增).  Both increase the

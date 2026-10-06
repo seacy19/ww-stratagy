@@ -123,8 +123,15 @@ class TushareAdapterTests(unittest.TestCase):
         self.assertEqual(bars[0].open, 10.0)
 
     def test_dividend_actions_keep_only_implemented_rows(self):
-        client = TushareDataClient(pro=FakePro())
+        class DividendArgsPro(FakePro):
+            def dividend(self, **kwargs):
+                self.dividend_kwargs = kwargs
+                return super().dividend(**kwargs)
+
+        pro = DividendArgsPro()
+        client = TushareDataClient(pro=pro)
         actions = client.dividend_actions("002919.SZ", "20190101", "20191231")
+        self.assertEqual(pro.dividend_kwargs, {"ts_code": "002919.SZ"})
         self.assertEqual(len(actions), 1)
         self.assertEqual(actions[0].stock_bonus_ratio, 0.5)
         self.assertEqual(actions[0].cash_div_per_share, 0.1)

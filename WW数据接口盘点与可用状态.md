@@ -11,15 +11,15 @@
 | 连接/入口 | 盘点证据 | 当前状态 |
 |---|---|---|
 | Codex MCP 注册表 | 本机 `~/.codex/config.toml` | 当前只有 `node_repl` MCP 服务；股票行情接口没有作为此 Codex 会话的 MCP 工具注册 |
-| QuickSync 金融数据代理 | QuantAgentChat 的 `server/quicksync.ts` 有统一 JSON HTTP 客户端；`server/.env` 配有代理 URL 和 token | 地址配置为明文 HTTP。无凭据的 HTTPS 探测发生 TLS 错误；没有把已有 token 发送到 HTTP。无凭据 HTTP 探测被服务以 `40101` 拒绝。因此目前不能安全确认有凭据请求是否可用 |
+| QuickSync 金融数据代理 | QuantAgentChat 的 `server/quicksync.ts` 有统一 JSON HTTP 客户端；`server/.env` 配有代理 URL 和 token | 代理地址为明文 HTTP，HTTPS 探测失败；一次经用户明确授权的请求返回 token 过期提示。该代理现不可用，不应继续发送凭据 |
 | QuickSync 113 个金融数据端点 | `server/quicksync.ts` 的 `KNOWN_APIS_RAW` 代码目录 | 代码已登记；逐接口实时权限需要在修好 HTTPS 后分别验证 |
 | QuantAgentChat 本机实际缓存 | `QuantAgentChat/data/screener-cache`，2026-10-07 只读盘点 | 有 5,561 只股票的 2026-09-30 单日横截面，800 只曾进筛选池股票约 900 日的前复权价/估值/资金流，以及 800 只的 5 项最新财务指标；不是全市场历史面板或 PIT 财报。详见 [缓存覆盖审计](WW策略_QuantAgentChat缓存覆盖审计.md) |
 | Finsight 新闻检索 | QuantAgentChat 的 `server/data/finsight.ts`，支持关键词/语义检索，代码列出 Eastmoney、10jqka、一财、华尔街见闻等来源 | 配置了服务地址；本次无凭据轻量请求遭远端断开，目前不可访问 |
 | 巨潮公告 | WW 的 `build_mainline_pit_data.py`、`build_2019_evidence_pack.py` 和历史审计记录 | 历史接口与 PDF 下载曾成功；公告元数据、来源标识和 PDF 哈希已落库。不是当前 Codex 的独立 MCP 连接 |
-| Tushare 直连接口 | macOS 登录钥匙串、本地官方 HTTPS `trade_cal` 实测 | 钥匙串读取已验证；官方 HTTPS 查询返回成功，2026-10-07 休市、10-08 开市。当前 SDK 版本需使用根路径 HTTPS 传输适配，避免默认 HTTP/路径拼接；其他 API 的权限尚未逐项复核 |
+| Tushare 直连接口 | macOS 登录钥匙串、官方 HTTPS 多接口小样本实测 | `trade_cal`、`daily`、`adj_factor`、`dividend`、`stock_basic`、`namechange`、`stk_limit`、`index_member_all`、`fina_mainbz`、`disclosure_date` 返回数据；SDK HTTPS 传输已固化在 WW 适配器 |
 | WW 本地历史缓存 | `proxy_cache/`、`data/mainline_pit/` | 本地已有约 1 GB 行情缓存与 170 MB PIT 证据数据，可支持离线工作；内容覆盖和 PIT 缺口以既有审计报告为准 |
 
-QuickSync 曾返回代理 token 过期状态；其 HTTP 地址不再用于携带凭据。2026-10-07 已通过官方 Tushare HTTPS 根路径读取交易日历，未显示或写出 Token；市场数据查询权限仍需逐接口测试。
+QuickSync 曾返回代理 token 过期状态；其 HTTP 地址不再用于携带凭据。2026-10-07 的 Tushare HTTPS 小样本确认：`dc_member`、`ths_member`、`anns_d`、`news`、`major_news` 返回权限错误码 40203；其他已测 API 只确认小样本可读，不代表已下载或验证全历史。
 
 2026-10-07 又对 QuantAgentChat 的 gzip 缓存做了只读统计，没有修改或复制其本地数据；逐文件数、日期覆盖和字段边界见缓存覆盖审计报告。
 
@@ -48,6 +48,8 @@ QuickSync 曾返回代理 token 过期状态；其 HTTP 地址不再用于携带
 
 - 2026-07-22 的 WW 接口审计记录：Tushare `index_member_all`、`fina_mainbz`、`disclosure_date` 当时可用；巨潮公告列表和 PDF 当时可抓取。
 - 同一审计中，当前 Tushare 账号对 `dc_member`、`ths_member`、`news`、`major_news` 被权限拒绝。历史概念成员和系统性新闻仍不能仅凭接口目录认定可用。
+- 2026-10-07 HTTPS 复测也发现 `anns_d` 返回权限错误；公告元数据需继续使用已保存的巨潮数据，不能依赖当前 Tushare 账号补历史。
+- `index_member_all` 历史样本可读，可用于补申万行业成员；`dividend` 只按单只股票读取，公司行动适配器现按 `ts_code` 拉历史记录，再以除权日在本地筛选日期范围。
 - QuantAgentChat 的提示词明确禁用 `ths_hot`、`kpl_concept` 等一部分端点；有目录记录也可能不能由工作流调用。
 - 财报数据需要按真实披露时点使用。接口能返回报告期或历史值，不代表这些数值在当时已经公开；实时端点不应用来填充历史回测。
 - Finsight 新闻源有关键词和语义两种模式，语义能力受后端 embedding 服务影响；当前无网络成功证据。
