@@ -2,6 +2,19 @@
 
 更新日期：2026-10-07。行情及公司行动补数使用 Tushare 官方 HTTPS，凭据从 macOS 登录钥匙串读取。新增记录保存在 Git 忽略目录 `proxy_cache/backfill_daily/` 和 `proxy_cache/backfill_dividends/`，不会覆盖现有 pickle。
 
+## 腾讯云缓存镜像
+
+2026-10-07 已将 `proxy_cache/`（1,364 个文件，1,864,141,425 字节）和 `data/mainline_pit/`（604 个文件，176,221,892 字节）同步至腾讯云 CVM `/home/ubuntu/ww-cache/`。通过 rsync checksum dry-run 复核，两端文件一致；远端磁盘同步后仍有约 142 GB 可用。私钥只保存在本机 `~/.ssh/id_ed25519_ww_tencent`，主机连接别名为 `ww-tencent-cache`。
+
+后续补数请用包装脚本运行；它会在补数成功或失败后同步已落盘的检查点，失败时保留原始退出状态：
+
+```bash
+./backfill_and_sync.sh daily --start 20220815 --end 20230811 --limit-days 20 --execute
+./backfill_and_sync.sh dividends --start 20220815 --end 20230811 --limit-days 40 --execute
+```
+
+也可单独运行 `./sync_ww_cache.sh` 同步本地缓存。同步采用增量 rsync，不删除云端多余文件；云端镜像用于存储与恢复，不会自动改变本地回测配置。
+
 ## 执行工具
 
 `backfill_market_data.py` 按 SSE 交易日历获取全市场原始日线和复权因子，逐日校验交易日、重复代码、正因子、日线—因子代码覆盖，并为每个日期生成 SHA-256。每个交易日单独原子落盘，支持断点续跑；默认只显示计划，加 `--execute` 才会写缓存。遇到一日失败会停止，避免跨过缺口继续造成不完整区间。
