@@ -15,6 +15,10 @@
 
 也可单独运行 `./sync_ww_cache.sh` 同步本地缓存。同步采用增量 rsync，不删除云端多余文件；云端镜像用于存储与恢复，不会自动改变本地回测配置。
 
+## 腾讯云 Python 运行环境
+
+已在 `/home/ubuntu/ww-cache/project/.venv` 以 Ubuntu x86_64 / Python 3.12.3 重新创建环境，并按仓库根目录 `requirements-lock.txt` 安装本机 `.venv` 的 23 个锁定包。macOS `.venv` 不可直接复制到 Linux，因此此处是重建而非搬运二进制环境。项目源文件在 `/home/ubuntu/ww-cache/project/`，行情及 PIT 目录以符号链接指向同级镜像缓存。服务器端 `python -m unittest discover -q` 的 58 项测试全部通过；`wwquant.cli audit --config configs/ww_price_proxy.json` 通过结构审计，并复现本机行情、元数据及公司行动输入哈希。本机 `.venv` 尚未删除。
+
 ## 执行工具
 
 `backfill_market_data.py` 按 SSE 交易日历获取全市场原始日线和复权因子，逐日校验交易日、重复代码、正因子、日线—因子代码覆盖，并为每个日期生成 SHA-256。每个交易日单独原子落盘，支持断点续跑；默认只显示计划，加 `--execute` 才会写缓存。遇到一日失败会停止，避免跨过缺口继续造成不完整区间。
