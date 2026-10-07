@@ -12,7 +12,7 @@ from pit_accounting import CorporateAction
 from proxy_pool import ProxyCandidate, SecurityMeta
 from tushare_data import DailyRecord
 from wwquant.config import Config, from_dict
-from wwquant.data import audit, select_evidence
+from wwquant.data import EVIDENCE_FIELDS, audit, select_evidence
 from wwquant.engine import run
 from wwquant.signals import Plan, make_plan
 from wwquant.cli import sweep
@@ -39,6 +39,13 @@ class ConfigTests(unittest.TestCase):
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_evidence_template_matches_required_schema(self):
+        import csv
+        path = Path(__file__).parent / "configs" / "ww_evidence_template.csv"
+        with path.open(encoding="utf-8-sig", newline="") as source:
+            fields = csv.DictReader(source).fieldnames
+        self.assertEqual(set(fields or ()), set(EVIDENCE_FIELDS))
+
     def test_available_date_expiry_and_invalidation(self):
         config = Config().selection
         row = dict(available_date="20250102", expires_date="20250131", ts_code="A",
