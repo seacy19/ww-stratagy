@@ -2,6 +2,7 @@
   "data": {
     "prices": "proxy_cache/daily_v3_20240814_20250515.pkl",
     "metadata": "proxy_cache/stock_metadata_v2.pkl",
+    "metadata_aliases": "configs/security_metadata_aliases.json",
     "actions": "proxy_cache/actions_v4_pit_repaired_20181112_20250515.pkl",
     "evidence": "",
     "exclude_codes": [],

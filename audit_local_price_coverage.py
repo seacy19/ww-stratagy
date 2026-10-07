@@ -11,6 +11,8 @@ from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
+from proxy_pool import apply_metadata_aliases
+
 
 ROOT = Path(__file__).resolve().parent
 CACHE = ROOT / "proxy_cache"
@@ -22,7 +24,10 @@ def load(path: Path):
 
 
 def audit(cache: Path = CACHE) -> str:
-    metadata = load(cache / "stock_metadata_v2.pkl")
+    metadata = apply_metadata_aliases(
+        load(cache / "stock_metadata_v2.pkl"),
+        ROOT / "configs" / "security_metadata_aliases.json",
+    )
     actions = load(cache / "actions_v4_pit_repaired_20181112_20250515.pkl")
     shards = sorted(cache.glob("daily_v3_*.pkl"))
     if not shards:
@@ -38,10 +43,20 @@ def audit(cache: Path = CACHE) -> str:
         "|---|---:|---:|---|---|---:|---:|---|",
     ]
     ranges = []
+    pre_bse_rows = 0
+    before_list_rows = 0
     for path in shards:
         records = load(path)
         observed = [row.trade_date for rows in records.values() for row in rows]
         missing_meta = sorted(set(records) - set(metadata))
+        pre_bse_rows += sum(
+            1 for code, rows in records.items() if code.endswith(".BJ")
+            for row in rows if row.trade_date < "20211115"
+        )
+        before_list_rows += sum(
+            1 for code, rows in records.items() if code in metadata
+            for row in rows if row.trade_date < metadata[code].list_date
+        )
         matched = 0
         unmatched = []
         changes = 0
@@ -82,6 +97,8 @@ def audit(cache: Path = CACHE) -> str:
         "",
         f"缓存分成 {len(shards)} 段；段间无行情缓存的日期范围：" + ("；".join(gaps) if gaps else "未发现") + "。",
         "这些间隔是缓存区间断层，是否包含开市日应以交易日历复核；不能把段首/段尾文件名当作连续全历史。",
+        "20200518—20211111 已另存于 `proxy_cache/backfill_daily/` 并完成逐日校验，但尚未合并到上述 pickle；其它日期范围和原始缓存的因子/行动异常仍须单独处理。",
+        f"原始行情另含 {pre_bse_rows:,} 行 `.BJ` 北交所前身记录（北交所于 2021-11-15 开始交易），以及 {before_list_rows:,} 行早于证券基础资料上市日的记录；运行时 A 股候选池会在北交所开市前排除 `.BJ`，但原始缓存保留供审计。",
         "",
         "因子变化只按现存公司行动 ex-date 精确匹配。未匹配变化包括供应商因子修订/舍入和疑似缺失公司行动，不能仅凭大小阈值自动删除或认定为分红送转。",
         "当前 `wwquant.data.audit` 会在首个无元数据证券或未匹配因子变化处停止；因此以上缓存尚不能直接作为完整正式回测输入。",

@@ -9,7 +9,9 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
+import json
 from math import ceil
+from pathlib import Path
 from statistics import median
 from typing import Mapping, Sequence
 
@@ -37,6 +39,58 @@ class SecurityMeta:
             start <= trade_date and (end is None or trade_date < end)
             for start, end in self.st_periods
         )
+
+
+def apply_metadata_aliases(metadata: Mapping[str, SecurityMeta], path: str | Path):
+    """Overlay documented historical ticker aliases without mutating the cache."""
+    alias_path = Path(path)
+    if not alias_path.exists():
+        return dict(metadata)
+    raw = json.loads(alias_path.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        raise ValueError("security metadata aliases must be a JSON object")
+    result = dict(metadata)
+    for code, item in raw.items():
+        if code in result:
+            raise ValueError(f"metadata alias would overwrite existing security: {code}")
+        if not isinstance(item, dict) or not item.get("alias_of") or not item.get("source"):
+            raise ValueError(f"metadata alias {code} needs alias_of and source")
+        list_date = str(item.get("list_date", ""))
+        if len(list_date) != 8 or not list_date.isdigit():
+            raise ValueError(f"metadata alias {code} needs YYYYMMDD list_date")
+        delist_date = item.get("delist_date") or None
+        if delist_date is not None:
+            delist_date = str(delist_date)
+            if len(delist_date) != 8 or not delist_date.isdigit():
+                raise ValueError(f"metadata alias {code} has invalid delist_date")
+        periods = tuple(
+            (str(period[0]), str(period[1]) if period[1] else None)
+            for period in item.get("st_periods", ())
+        )
+        result[code] = SecurityMeta(
+            ts_code=code,
+            list_date=list_date,
+            delist_date=delist_date,
+            list_status=item.get("list_status"),
+            st_periods=periods,
+        )
+    return result
+
+
+def is_a_share_universe_member(ts_code: str, trade_date: str,
+                               meta: SecurityMeta | None = None) -> bool:
+    """Check listing dates, ST state, and the historical BSE trading boundary."""
+    if ts_code.endswith(".BJ") and trade_date < "20211115":
+        return False
+    if meta is None:
+        return True
+    if trade_date < meta.list_date:
+        return False
+    if meta.delist_date and trade_date >= meta.delist_date:
+        return False
+    if meta.is_st_on(trade_date):
+        return False
+    return True
 
 
 @dataclass(frozen=True)
@@ -83,13 +137,8 @@ def build_pit_proxy_candidates(
         for index in range(return_lookback, len(ordered)):
             current = ordered[index]
             trade_date = current.trade_date
-            if meta is not None:
-                if trade_date < meta.list_date:
-                    continue
-                if meta.delist_date and trade_date >= meta.delist_date:
-                    continue
-                if meta.is_st_on(trade_date):
-                    continue
+            if not is_a_share_universe_member(ts_code, trade_date, meta):
+                continue
             if current.amount <= 0:
                 continue
             return_window = ordered[index - return_lookback : index + 1]

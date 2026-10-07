@@ -1,0 +1,17 @@
+{
+  "300114.SZ": {
+    "alias_of": "302132.SZ",
+    "list_date": "20100827",
+    "delist_date": "20250217",
+    "list_status": "historical_code",
+    "st_periods": [],
+    "source": "Tushare Pro stock_basic/namechange for 302132.SZ and CNINFO implementation announcement https://static.cninfo.com.cn/finalpage/2025-02-15/1222544408.PDF",
+    "evidence": {
+      "successor_code_list_date": "20100827",
+      "old_name_active_through": "20250216",
+      "new_code_effective_date": "20250217",
+      "old_code_last_trade_date": "20250214",
+      "note": "stock_st history was permission denied; namechange history contains no ST/*ST name interval"
+    }
+  }
+}

@@ -14,6 +14,7 @@ from adam_gate import AdamGateConfig
 class DataConfig:
     prices: str = "proxy_cache/daily_v3_20240814_20250515.pkl"
     metadata: str = "proxy_cache/stock_metadata_v2.pkl"
+    metadata_aliases: str = "configs/security_metadata_aliases.json"
     actions: str = "proxy_cache/actions_v4_pit_repaired_20181112_20250515.pkl"
     evidence: str = ""
     exclude_codes: list = field(default_factory=list)

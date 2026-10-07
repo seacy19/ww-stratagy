@@ -8,6 +8,8 @@ import math
 from pathlib import Path
 import pickle
 
+from proxy_pool import apply_metadata_aliases
+
 
 def digest(path):
     result = hashlib.sha256()
@@ -27,6 +29,14 @@ def load_inputs(config, root):
         with path.open("rb") as source:
             objects[name] = pickle.load(source)
         manifest[name] = {"path": str(path.resolve()), "sha256": digest(path)}
+    if config.data.metadata_aliases:
+        alias_path = Path(root) / config.data.metadata_aliases
+        objects["metadata"] = apply_metadata_aliases(objects["metadata"], alias_path)
+        manifest["metadata_aliases"] = {
+            "path": str(alias_path.resolve()), "sha256": digest(alias_path),
+        }
+    else:
+        manifest["metadata_aliases"] = None
     records = {code: sorted(rows, key=lambda row: row.trade_date)
                for code, rows in objects["prices"].items() if code not in config.data.exclude_codes}
     manifest["explicit_exclusions"] = config.data.exclude_codes

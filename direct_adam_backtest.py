@@ -22,7 +22,7 @@ from proxy_backtest import (
     _build_code_state,
     _event_result,
 )
-from proxy_pool import ProxyCandidate, SecurityMeta
+from proxy_pool import ProxyCandidate, SecurityMeta, is_a_share_universe_member
 from tushare_data import DailyRecord
 
 
@@ -190,13 +190,9 @@ def scan_security(
         trade_date = record.trade_date
         if trade_date < test_start or trade_date > test_end:
             continue
-        if meta is not None:
-            if trade_date < meta.list_date or (meta.delist_date and trade_date >= meta.delist_date):
-                skipped += 1
-                continue
-            if meta.is_st_on(trade_date):
-                skipped += 1
-                continue
+        if not is_a_share_universe_member(code, trade_date, meta):
+            skipped += 1
+            continue
         if index >= len(technical) or index + 1 >= len(state.records):
             skipped += 1
             continue

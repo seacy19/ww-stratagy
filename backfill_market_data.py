@@ -9,6 +9,7 @@ import argparse
 from datetime import datetime, timezone
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import tempfile
@@ -35,8 +36,11 @@ def _rows(frame: Any) -> list[dict[str, Any]]:
                 item[str(key)] = None
             elif hasattr(value, "item"):
                 value = value.item()
-                item[str(key)] = value if isinstance(value, (int, float, str, bool)) else str(value)
-            elif isinstance(value, float) and value != value:
+                if isinstance(value, float) and math.isnan(value):
+                    item[str(key)] = None
+                else:
+                    item[str(key)] = value if isinstance(value, (int, float, str, bool)) else str(value)
+            elif isinstance(value, float) and math.isnan(value):
                 item[str(key)] = None
             else:
                 item[str(key)] = value
