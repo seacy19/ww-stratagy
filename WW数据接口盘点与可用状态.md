@@ -68,6 +68,7 @@ QuickSync 曾返回代理 token 过期状态；其 HTTP 地址不再用于携带
 - QuantAgentChat 数据客户端：同机项目 `QuantAgentChat/server/quicksync.ts`
 - QuantAgentChat 新闻适配器：同机项目 `QuantAgentChat/server/data/finsight.ts`
 - WW Tushare 适配器：`tushare_data.py`
+- 断档行情/因子增量工具：`backfill_market_data.py`
 - WW 数据源实测：`WW主线测试_数据源接口实测.md`
 - WW 数据就绪审计：`WW主线测试_数据就绪审计表.md`
 - WW 数据流程与参数：`WW量化流程与参数手册.md`
