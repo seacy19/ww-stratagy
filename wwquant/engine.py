@@ -54,6 +54,23 @@ def run(config, records, metadata, actions, evidence=()):
             if days[0] <= candidate.trade_date <= days[-1]:
                 candidates[candidate.trade_date][candidate.ts_code] = {
                     "score": candidate.return_lookback, "mainline": "price_proxy"}
+    elif config.selection.mode == "hindsight_mainline":
+        if not isinstance(evidence, dict) or not evidence.get("codes_by_date"):
+            raise ValueError("hindsight_mainline requires resolved dated mainline membership")
+        s = config.selection
+        eligible = {date: set(codes) for date, codes in evidence["codes_by_date"].items()}
+        pool = build_pit_proxy_candidates(records, metadata,
+                return_lookback=s.return_lookback, liquidity_lookback=s.liquidity_lookback,
+                top_return_fraction=s.top_return_fraction,
+                top_liquidity_fraction=s.top_liquidity_fraction,
+                eligible_codes_by_date=eligible)
+        for candidate in pool:
+            if days[0] <= candidate.trade_date <= days[-1]:
+                themes = evidence["themes_by_date"].get(candidate.trade_date, {}).get(candidate.ts_code, ())
+                candidates[candidate.trade_date][candidate.ts_code] = {
+                    "score": candidate.return_lookback,
+                    "mainline": "|".join(themes),
+                }
     elif not evidence:
         raise ValueError("WW cannot run without frozen evidence")
 
@@ -139,7 +156,7 @@ def run(config, records, metadata, actions, evidence=()):
             elif day_number - pos["entry_session"] >= p.max_holding_sessions:
                 reason = "time_exit"
             elif pos.get("logic_exit"):
-                reason = "evidence_exit"
+                reason = pos.get("logic_exit_reason", "evidence_exit")
             if reason:
                 sell(code, bar.open, reason)
 
@@ -154,6 +171,10 @@ def run(config, records, metadata, actions, evidence=()):
                 reason = "drawdown_halt"
             elif len(positions) >= p.max_positions:
                 reason = "position_count_limit"
+            elif (config.selection.mode == "hindsight_mainline"
+                  and not set(plan.mainline.split("|")).intersection(
+                      evidence["active_themes_by_date"].get(date, ()))):
+                reason = "mainline_expired_before_execution"
             elif meta.is_st_on(date) or date < meta.list_date or (meta.delist_date and date >= meta.delist_date):
                 reason = "ineligible_security"
             elif i is None:
@@ -238,6 +259,14 @@ def run(config, records, metadata, actions, evidence=()):
                       for code, row in selected.items()}
             for code, pos in positions.items():
                 pos["logic_exit"] = code not in selected
+        elif config.selection.mode == "hindsight_mainline":
+            todays = candidates.get(date, {})
+            active_themes = set(evidence["active_themes_by_date"].get(date, ()))
+            for code, pos in positions.items():
+                held_themes = set(pos.get("mainline", "").split("|"))
+                left_mainline = not held_themes.intersection(active_themes)
+                pos["logic_exit"] = left_mainline
+                pos["logic_exit_reason"] = "mainline_exit" if left_mainline else ""
         else:
             todays = candidates.get(date, {})
         pending = []
@@ -264,5 +293,9 @@ def run(config, records, metadata, actions, evidence=()):
                         "个股缺少行情时沿用上次价格估值；尚未模拟退市清算，也不假设期末强制平仓。",
                         "交易日历由现有行情日期合并生成；全市场是否缺少某个交易日，还需用独立日历核验。",
                         "主线和公司评分是事先保存的研究输入，尚未建立自动核验的基本面评分模型。"]})
+    if config.selection.mode == "hindsight_mainline":
+        summary["mainline_label_mode"] = "retrospective_daily_labels"
+        summary["mainline_exit_rule"] = "exit_next_open_when_held_theme_is_no_longer_active"
+        summary["limitations"].append("主线标签是事后整理的；其成员范围按历史申万行业或报道列举的部分名单映射，不代表点时可知的完整题材成员。")
     return {"summary": summary, "equity": curve, "trades": trades, "plans": plans,
             "decisions": decisions, "positions": positions}

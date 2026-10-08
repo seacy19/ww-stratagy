@@ -17,6 +17,10 @@ class DataConfig:
     metadata_aliases: str = "configs/security_metadata_aliases.json"
     actions: str = "proxy_cache/actions_v4_pit_repaired_20181112_20250515.pkl"
     evidence: str = ""
+    mainline_table: str = ""
+    mainline_calendar: str = ""
+    industry_membership: str = ""
+    mainline_industry_map: str = ""
     exclude_codes: list = field(default_factory=list)
     start: str = "20250102"
     end: str = "20250331"
@@ -99,10 +103,15 @@ class Config:
                 datetime.strptime(date, "%Y%m%d")
             if section.start >= section.end:
                 raise ValueError("start must precede end")
-        if self.selection.mode not in {"price_proxy", "ww"}:
-            raise ValueError("selection.mode must be price_proxy or ww")
+        if self.selection.mode not in {"price_proxy", "ww", "hindsight_mainline"}:
+            raise ValueError("selection.mode must be price_proxy, ww, or hindsight_mainline")
         if self.selection.mode == "ww" and not self.data.evidence:
             raise ValueError("WW requires a dated evidence CSV; proxy substitution is forbidden")
+        if self.selection.mode == "hindsight_mainline" and not all((
+            self.data.mainline_table, self.data.mainline_calendar,
+            self.data.industry_membership, self.data.mainline_industry_map,
+        )):
+            raise ValueError("hindsight_mainline requires a table, calendar, historical industry membership, and mapping")
         if self.signal.mode not in {"second_reflection", "pullback_reclaim", "gate_only"}:
             raise ValueError("unknown signal.mode")
         positive = [self.selection.return_lookback, self.selection.liquidity_lookback,

@@ -1,6 +1,6 @@
 # WW 完整量化研究流程与参数手册
 
-版本：2026-10-05，研究流程 v1。代码入口：`python3 -m wwquant.cli`。
+版本：2026-10-08，研究流程 v1.1。代码入口：`python3 -m wwquant.cli`。
 
 ## 1. 交付范围与策略定位
 
@@ -21,7 +21,7 @@
 | 绩效归档 | 每日市值、费用、未平仓持仓，期末不假设强制平仓 | 净值、回撤、零无风险利率 Sharpe、平仓胜率、拒绝原因 |
 | 参数验证 | 冻结网格，前段训练，只选训练合格最优项；后段只评估选中项 | 全部训练试验、选择协议、最终配置、留出结果 |
 
-**不得自由化的研究纪律：** 不使用未来证据；不能把当期发现回填过去；不能把价格代理叫作 WW；不能因某组结果好而隐去其他试验；参数名拼错、类型不对、窗口不合法必须报错。
+**完整 WW 模式的研究纪律：** 不使用未来证据；不能把当期发现回填过去；不能把价格代理叫作 WW；不能因某组结果好而隐去其他试验。另设 `hindsight_mainline` 条件实验模式，按用户授权使用事后确认的每日主线，结果必须标为前视条件回测。参数名拼错、类型不对、窗口不合法必须报错。
 
 ## 3. 快速运行
 
@@ -65,6 +65,25 @@ python3 -m wwquant.cli sweep \
 
 没有训练组合达到最少平仓笔数时，会保存试验表和失败状态，**不执行留出段**。不能为了得到一个赢家而事后下调门槛。
 
+### 3.1 事后每日主线条件回测
+
+`selection.mode="hindsight_mainline"` 将每日主线作为已知标签输入，再按当日历史行业成员或明确成员名单构造候选池。回看涨幅、均线趋势和成交额排名只使用当日及之前行情；通过筛选后继续运行 Adam 闸门、信号、仓位、成本和退出。持仓所属主线不再活跃时，下一交易日开盘退出。
+
+这项模式按用户授权允许主线标签含有事后信息，结果只回答“如果预先知道当天主线，WW 的量价筛选和交易规则表现如何”，不能当作无前视或可实盘成绩。
+
+必需字段包括 `data.mainline_table`（主线区间 JSON 或展开 CSV）、`data.mainline_calendar`（SSE 交易日历）、`data.industry_membership`（含历史起止日的申万成员表）和 `data.mainline_industry_map`（主线名到申万行业的显式映射）。已映射行业按决策日历史成分展开；没有行业映射、只有报道列举股票的主题按部分成员试跑，并在运行清单中记录来源、成员数和覆盖类型。多条主线在当日合并后排名，大板块可能占更多名额。
+
+本地四日流程演练：
+
+```bash
+./.venv/bin/python -m wwquant.cli audit --config configs/ww_hindsight_20190401_04.json
+./.venv/bin/python -m wwquant.cli run \
+  --config configs/ww_hindsight_20190401_04.json \
+  --output runs/ww_hindsight_20190401_04
+```
+
+2019-04-01 至 2019-04-04 只有 4 个标签日，结果仅用于确认主线解析、历史成员扩展、排名与信号流程连通，不能用于绩效结论。要评估策略，需扩充每日主线时间范围，并选用行情和公司行动覆盖合格的样本期。
+
 ## 4. 参数字典
 
 默认值是继承现有规则或用于验证流程的研究假设，**不是最优参数，也不是交易费用的历史事实声明**。
@@ -78,6 +97,10 @@ python3 -m wwquant.cli sweep \
 | `metadata_aliases` | `configs/security_metadata_aliases.json`，经公告核验的历史代码更名别名；文件哈希进入运行清单 |
 | `actions` | `proxy_cache/actions_v4_pit_repaired_20181112_20250515.pkl`，公司行动 |
 | `evidence` | 默认空；WW 模式必须提供时点证据 CSV |
+| `mainline_table` | 事后主线区间 JSON 或展开的逐日 CSV |
+| `mainline_calendar` | 将主线区间展开到 SSE 开市日的交易日历 |
+| `industry_membership` | 含历史起止日的申万行业成员表 |
+| `mainline_industry_map` | 事后主线名到申万行业名称/层级的映射 |
 | `exclude_codes` | 默认空列表；显式排除股票并写入运行档案，不能掩盖覆盖偏差 |
 | `start` / `end` | `20250102` / `20250331`，YYYYMMDD；包含边界，历史数据供预热 |
 
@@ -85,15 +108,15 @@ python3 -m wwquant.cli sweep \
 
 | 参数 | 默认 | 含义 |
 |---|---:|---|
-| `mode` | `price_proxy` | `ww` 或 `price_proxy` |
+| `mode` | `price_proxy` | `ww`、`price_proxy` 或 `hindsight_mainline` |
 | `return_lookback` | 60 | 代理动量回看长度 |
 | `liquidity_lookback` | 20 | 代理成交额中位数窗口 |
 | `top_return_fraction` | 0.20 | 价格趋势合格集合中的动量前20% |
 | `top_liquidity_fraction` | 0.50 | 同一集合中的流动性前50% |
-| `min_mainline_score` | 7 | WW 主线最低分，满分11 |
-| `min_company_score` | 0.60 | WW 公司最低分，已冻结归一评分0—1 |
-| `evidence_max_age_days` | 45 | 最长证据年龄，**自然日** |
-| `require_both_legs` | true | 要求自上而下真实成员与自下而上验证同时成立 |
+| `min_mainline_score` | 7 | WW 模式的主线最低分，满分11 |
+| `min_company_score` | 0.60 | WW 模式的公司最低分，归一评分0—1 |
+| `evidence_max_age_days` | 45 | WW 模式的最长证据年龄，**自然日** |
+| `require_both_legs` | true | WW 模式要求自上而下真实成员与自下而上验证同时成立 |
 
 代理池沿用原模块规则：先保留价格高于回看均价的股票，再做截面排名。它不是全市场无条件排名。WW 公司排序由冻结 `company_score` 决定；瓶颈因子权重、财务数据清洗与文本标签提取必须在上游记录版本，不应临时凭结果改分。
 

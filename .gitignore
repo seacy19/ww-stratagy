@@ -11,7 +11,8 @@ __pycache__/
 *.key
 *token*
 *secret*
-/data/
+/data/*
+!/data/hindsight_mainlines/
 /proxy_cache/
 /proxy_cache
 /runs/

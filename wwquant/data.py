@@ -9,6 +9,7 @@ from pathlib import Path
 import pickle
 
 from proxy_pool import apply_metadata_aliases
+from wwquant.mainlines import build_daily_universe, read_labels
 
 
 def digest(path):
@@ -39,13 +40,47 @@ def load_inputs(config, root):
         manifest["metadata_aliases"] = None
     records = {code: sorted(rows, key=lambda row: row.trade_date)
                for code, rows in objects["prices"].items() if code not in config.data.exclude_codes}
-    manifest["explicit_exclusions"] = config.data.exclude_codes
-    audit(records, objects["metadata"], objects["actions"], config)
     evidence = []
-    if config.selection.mode == "ww":
+    manifest["explicit_exclusions"] = config.data.exclude_codes
+    if config.selection.mode == "hindsight_mainline":
+        source_paths = {
+            "mainline_table": Path(root) / config.data.mainline_table,
+            "mainline_calendar": Path(root) / config.data.mainline_calendar,
+            "industry_membership": Path(root) / config.data.industry_membership,
+            "mainline_industry_map": Path(root) / config.data.mainline_industry_map,
+        }
+        labels = read_labels(source_paths["mainline_table"],
+                             source_paths["mainline_calendar"],
+                             config.data.start, config.data.end)
+        evidence = build_daily_universe(
+            labels, source_paths["industry_membership"],
+            source_paths["mainline_industry_map"],
+        )
+        active_codes = {code for codes in evidence["codes_by_date"].values() for code in codes}
+        records = {code: rows for code, rows in records.items() if code in active_codes}
+        evidence["missing_price_codes"] = sorted(active_codes - set(records))
+        manifest["hindsight_mainline_missing_price_codes"] = evidence["missing_price_codes"]
+        manifest["hindsight_mainline_missing_price_codes_by_date"] = {
+            date: sorted(set(codes) - set(records))
+            for date, codes in evidence["codes_by_date"].items()
+            if set(codes) - set(records)
+        }
+        manifest["hindsight_mainlines"] = {
+            name: {"path": str(path.resolve()), "sha256": digest(path)}
+            for name, path in source_paths.items()
+        }
+        manifest["hindsight_mainline_label_rows"] = len(labels)
+        manifest["hindsight_mainline_members_by_date"] = {
+            date: len(codes) for date, codes in evidence["codes_by_date"].items()
+        }
+        manifest["hindsight_mainline_provenance"] = evidence["provenance_by_date"]
+        if not records:
+            raise ValueError("mainline labels resolved to no securities with cached prices")
+    elif config.selection.mode == "ww":
         path = Path(root) / config.data.evidence
         evidence = read_evidence(path)
         manifest["evidence"] = {"path": str(path.resolve()), "sha256": digest(path)}
+    audit(records, objects["metadata"], objects["actions"], config)
     return records, objects["metadata"], objects["actions"], evidence, manifest
 
 

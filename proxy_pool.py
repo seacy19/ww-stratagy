@@ -113,6 +113,7 @@ def build_pit_proxy_candidates(
     liquidity_lookback: int = 20,
     top_return_fraction: float = 0.20,
     top_liquidity_fraction: float = 0.50,
+    eligible_codes_by_date: Mapping[str, set[str] | Sequence[str]] | None = None,
 ) -> list[ProxyCandidate]:
     """Build daily candidates using only information available on each T.
 
@@ -137,6 +138,9 @@ def build_pit_proxy_candidates(
         for index in range(return_lookback, len(ordered)):
             current = ordered[index]
             trade_date = current.trade_date
+            if (eligible_codes_by_date is not None
+                    and ts_code not in eligible_codes_by_date.get(trade_date, ())):
+                continue
             if not is_a_share_universe_member(ts_code, trade_date, meta):
                 continue
             if current.amount <= 0:

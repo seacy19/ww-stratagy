@@ -1,0 +1,49 @@
+{
+  "start": "2019-04-01",
+  "end": "2019-04-04",
+  "label_policy": "事后盘面主线判断；成员仅为来源明确列举的部分映射，不代表完整板块或龙头",
+  "intervals": [
+    {
+      "start": "2019-04-01", "end": "2019-04-02", "mainline": "区块链",
+      "mapping_type": "报道列举成员（部分）",
+      "members": ["002447.SZ", "300099.SZ", "300468.SZ", "600146.SH", "002177.SZ", "002235.SZ"],
+      "sources": ["https://www.yicai.com/news/100152380.html", "https://www.yicai.com/news/100153741.html"],
+      "sources_by_date": {"2019-04-01": ["https://www.yicai.com/news/100152380.html"], "2019-04-02": ["https://www.yicai.com/news/100153741.html"]},
+      "note": "两日报道区块链板块活跃；成员为报道举例，不按后续收益排序。"
+    },
+    {
+      "start": "2019-04-03", "end": "2019-04-04", "mainline": "区块链（分化）",
+      "mapping_type": "报道列举成员（部分）",
+      "members": ["002177.SZ", "000607.SZ", "300561.SZ", "600093.SH"],
+      "sources": ["https://www.yicai.com/news/100154616.html", "https://www.yicai.com/news/100155554.html"],
+      "sources_by_date": {"2019-04-03": ["https://www.yicai.com/news/100154616.html"], "2019-04-04": ["https://www.yicai.com/news/100155554.html"]},
+      "note": "报道均称板块分化，仍有涨停；成员为两日报道中的例子。"
+    },
+    {
+      "start": "2019-04-02", "end": "2019-04-02", "mainline": "军工",
+      "mapping_type": "报道列举成员（部分）", "members": ["300527.SZ"],
+      "sources": ["https://www.yicai.com/news/100153741.html"],
+      "note": "报道明确称军工表现较好；成员举例过窄，不能直接构成板块回测候选池。"
+    },
+    {
+      "start": "2019-04-03", "end": "2019-04-03", "mainline": "物流",
+      "mapping_type": "报道列举成员（部分）",
+      "members": ["002183.SZ", "600018.SH", "603009.SH", "603499.SH"],
+      "sources": ["https://www.yicai.com/news/100154616.html"],
+      "note": "报道注明物流板块涨幅超4%并列举涨停股。"
+    },
+    {
+      "start": "2019-04-03", "end": "2019-04-03", "mainline": "券商",
+      "mapping_type": "报道明确板块；本记录未提供可验证的完整成员", "members": [],
+      "sources": ["https://www.yicai.com/news/100154616.html"],
+      "note": "报道指出券商股午后拉动指数；成员映射待补。"
+    },
+    {
+      "start": "2019-04-04", "end": "2019-04-04", "mainline": "化工",
+      "mapping_type": "报道列举成员（部分）",
+      "members": ["000830.SZ", "002597.SZ", "002648.SZ", "600389.SH", "603086.SH", "603599.SH"],
+      "sources": ["https://www.yicai.com/news/100155554.html"],
+      "note": "报道明确化工板块走强及多个子题材；成员为文中举例。"
+    }
+  ]
+}

@@ -42,13 +42,23 @@ def save_run(directory, config, result, manifest):
     for name in ("equity", "trades", "plans", "decisions"):
         write_csv(directory / f"{name}.csv", result[name])
     s = result["summary"]
-    report = ["# WW 量化研究运行报告", "", f"模式：{s['selection_mode']} / {s['signal_mode']}",
-        "", "执行模型：日线开盘成交研究代理；不是实盘执行验证。", "",
+    report = ["# WW 量化研究运行报告", "", f"模式：{s['selection_mode']} / {s['signal_mode']}"]
+    if s.get("mainline_label_mode") == "retrospective_daily_labels":
+        report.extend(["", "主线标签：事后整理的逐日标签；全量行业按历史申万成员映射，未映射主题仅用来源列举的部分成员。",
+                       "筛选口径：在当日主线成员并集内计算历史强度、流动性排名，再运行既有价格闸门。",
+                       "主线退出：原持仓所属主线不再活跃时，下一交易日开盘退出。"])
+        counts = manifest.get("hindsight_mainline_members_by_date", {})
+        report.extend(["", "每日主线映射成员数：" + ", ".join(f"{date}={count}" for date, count in sorted(counts.items()))])
+        missing = manifest.get("hindsight_mainline_missing_price_codes_by_date", {})
+        if missing:
+            report.extend(["缓存缺行情的成员：" + "; ".join(
+                f"{date}={','.join(codes)}" for date, codes in sorted(missing.items()))])
+    report.extend(["", "执行模型：日线开盘成交研究代理；不是实盘执行验证。", "",
         f"区间：{config.data.start}—{config.data.end}",
         f"累计净值收益：{s['total_return']:.2%}", f"最大回撤：{s['max_drawdown']:.2%}",
         f"已平仓交易：{s['closed_trades']}；期末持仓：{s['open_positions']}",
         "", "收益包含期末未平仓的市值变化，未假设期末强制成交。参数未通过独立留出验证时，不代表策略有效。", "",
-        "## 研究边界", ""] + [f"- {v}" for v in s["limitations"]]
+        "## 研究边界", ""] + [f"- {v}" for v in s["limitations"]])
     (directory / "report.md").write_text("\n".join(report) + "\n", encoding="utf-8")
 
 
@@ -151,10 +161,16 @@ def main(argv=None):
         loaded = load_inputs(config, ROOT)
         if args.command == "audit":
             records, _, _, evidence, manifest = loaded
-            print(json.dumps({"status": "structural_audit_passed", "codes": len(records),
-                "bars": sum(map(len, records.values())), "evidence_records": len(evidence),
+            result = {"status": "structural_audit_passed", "codes": len(records),
+                "bars": sum(map(len, records.values())),
                 "note": "Does not prove whole-market coverage or authenticity of historical evidence.",
-                "inputs": manifest}, ensure_ascii=False, indent=2))
+                "inputs": manifest}
+            if config.selection.mode == "hindsight_mainline":
+                result["hindsight_mainline_label_rows"] = manifest.get("hindsight_mainline_label_rows", 0)
+                result["hindsight_mainline_members_by_date"] = manifest.get("hindsight_mainline_members_by_date", {})
+            else:
+                result["evidence_records"] = len(evidence)
+            print(json.dumps(result, ensure_ascii=False, indent=2))
         elif args.command == "run":
             if args.output.exists():
                 raise ValueError("output already exists; choose a new run directory")
